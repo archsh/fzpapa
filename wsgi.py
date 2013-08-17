@@ -1,5 +1,6 @@
 import logging
 import os
+import tornado.web
 from restlet.application import RestletApplication
 
 DEFAULT_VCAP_SERVICES = """\
@@ -38,8 +39,15 @@ DEBUGGING = True if LOG_LEVEL == 'DEBUG' else False
 # PermissionHandler.route_to('/permissions')
 logging.basicConfig(level=logging.DEBUG)
 
+
+class DefaultHandler(tornado.web.RequestHandler):
+    def get(self):
+        self.write(VCAP_SERVICES or "Hello, world")
+
+
 from base.views import UserHandler, GroupHandler, PermissionHandler
-application = RestletApplication([UserHandler.route_to('/users'),
+application = RestletApplication([(r'/', DefaultHandler),
+				  UserHandler.route_to('/users'),
                                   GroupHandler.route_to('/groups'),
                                   PermissionHandler.route_to('/permissions')],
                                  dburi='postgresql://postgres:postgres@localhost/test',  # 'sqlite:///:memory:',
