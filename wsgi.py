@@ -1,6 +1,6 @@
 import logging
 import os
-import tornado.web
+from tornado.web import RedirectHandler, RequestHandler, StaticFileHandler
 from restlet.application import RestletApplication
 import simplejson as json
 
@@ -44,7 +44,7 @@ else:
     _DBURI_ = ""
 
 
-class DefaultHandler(tornado.web.RequestHandler):
+class DefaultHandler(RequestHandler):
     def get(self):
         self.write(VCAP_SERVICES or "Hello, world")
 
@@ -66,10 +66,16 @@ class FzpapaApplication(RestletApplication):
         if self.db_engine is not None:
             Base.metadata.create_all(self.db_engine)
 
-application = FzpapaApplication([(r'/', DefaultHandler),
-                                 UserHandler.route_to('/users'),
-                                 GroupHandler.route_to('/groups'),
-                                 PermissionHandler.route_to('/permissions')],
+working_directory = os.path.abspath(os.path.dirname(__file__))
+application = FzpapaApplication([(r'/(.*)',
+                                  StaticFileHandler,
+                                  {"path": os.path.join(working_directory, "_webpages_default"),
+                                   "default_filename": "index.html"}),
+                                 (r'/admin/(.*)',
+                                  StaticFileHandler,
+                                  {"path": os.path.join(working_directory, "_webpages_admin"),
+                                   "default_filename": "index.html"}),
+                                 ],
                                 dburi=_DBURI_,  # 'sqlite:///:memory:',
                                 loglevel=LOG_LEVEL,
                                 debug=DEBUGGING,
