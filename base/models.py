@@ -4,7 +4,7 @@ from sqlalchemy.ext.declarative import declarative_base
 from sqlalchemy import (Table, Column, Integer, String, Sequence, MetaData, DateTime, func,
                         ForeignKey, Text, SmallInteger, Boolean, Numeric)
 from sqlalchemy.orm import relationship, backref
-_logger = logging.getLogger('tornado.restlet')
+_logger = logging.getLogger('fzpapa.base')
 
 Base = declarative_base()
 

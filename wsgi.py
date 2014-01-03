@@ -2,7 +2,9 @@ import logging
 import os
 import tornado.web
 from restlet.application import RestletApplication
+import simplejson as json
 
+## The default VCAP_SERVICES for local development. Which is from appfog.
 DEFAULT_VCAP_SERVICES = """\
 {
  "postgresql-9.1":[
@@ -12,13 +14,13 @@ DEFAULT_VCAP_SERVICES = """\
       "plan":"free",
       "tags":["postgresql","postgresql-9.1","relational","postgresql-9.1","postgresql"],
       "credentials":{
-        "name":"d01d2c6f92ad74c3e929653933714ab4a",
-        "host":"10.0.35.83",
-        "hostname":"10.0.35.83",
+        "name":"fzpapadb",
+        "host":"localhost",
+        "hostname":"localhost",
         "port":5432,
-        "user":"ua4539079654d4a8c838b8bfd105a9db0",
-        "username":"ua4539079654d4a8c838b8bfd105a9db0",
-        "password":"p674d15e7a08e4a8fb8685708ccd87dfc"
+        "user":"postgres",
+        "username":"postgres",
+        "password":"postgres"
       }
     }
   ]
@@ -28,10 +30,18 @@ DEFAULT_VCAP_SERVICES = """\
 VCAP_SERVICES = os.getenv("VCAP_SERVICES", DEFAULT_VCAP_SERVICES)
 LOG_LEVEL = os.getenv("FZPAPA_LOGLEVEL", "DEBUG")
 DEBUGGING = True if LOG_LEVEL == 'DEBUG' else False
-# UserHandler.route_to('/users'),
-# GroupHandler.route_to('/groups'),
-# PermissionHandler.route_to('/permissions')
 logging.basicConfig(level=logging.DEBUG)
+
+try:
+    _VCAP_SERVICES_ = json.loads(VCAP_SERVICES)
+except:
+    _VCAP_SERVICES_ = {}
+
+if "postgresql-9.1" in _VCAP_SERVICES_:
+    _DBURI_ = "postgresql://%(username)s:%(password)s@%(host)s:%(port)d/%(name)s" \
+              % _VCAP_SERVICES_["postgresql-9.1"][0]["credentials"]
+else:
+    _DBURI_ = ""
 
 
 class DefaultHandler(tornado.web.RequestHandler):
@@ -40,14 +50,30 @@ class DefaultHandler(tornado.web.RequestHandler):
 
 
 from base.views import UserHandler, GroupHandler, PermissionHandler
-application = RestletApplication([(r'/', DefaultHandler),
-				  UserHandler.route_to('/users'),
-                                  GroupHandler.route_to('/groups'),
-                                  PermissionHandler.route_to('/permissions')],
-                                 dburi='postgresql://postgres:postgres@localhost/test',  # 'sqlite:///:memory:',
-                                 loglevel=LOG_LEVEL,
-                                 debug=DEBUGGING,
-                                 dblogging=DEBUGGING)
+from base.models import Base
+
+
+class FzpapaApplication(RestletApplication):
+    """\
+    We need to do initialization here.
+    """
+    def __init__(self, handlers=None, default_host="", transforms=None,
+                 wsgi=False, **settings):
+        super(FzpapaApplication, self).__init__(handlers=handlers,
+                                                default_host=default_host,
+                                                transforms=transforms,
+                                                wsgi=wsgi, **settings)
+        if self.db_engine is not None:
+            Base.metadata.create_all(self.db_engine)
+
+application = FzpapaApplication([(r'/', DefaultHandler),
+                                 UserHandler.route_to('/users'),
+                                 GroupHandler.route_to('/groups'),
+                                 PermissionHandler.route_to('/permissions')],
+                                dburi=_DBURI_,  # 'sqlite:///:memory:',
+                                loglevel=LOG_LEVEL,
+                                debug=DEBUGGING,
+                                dblogging=DEBUGGING)
 
 
 if __name__ == "__main__":
