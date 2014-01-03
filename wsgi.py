@@ -31,16 +31,21 @@ DEFAULT_VCAP_SERVICES = """\
 """
 
 VCAP_SERVICES = os.getenv("VCAP_SERVICES", DEFAULT_VCAP_SERVICES)
-LOG_LEVEL = os.getenv("FZPAPA_LOGLEVEL", "CRITICAL")
+LOG_LEVEL = os.getenv("FZPAPA_LOGLEVEL", "DEBUG")
+DEBUGGING = True if LOG_LEVEL == 'DEBUG' else False
 # UserHandler.route_to('/users'),
 # GroupHandler.route_to('/groups'),
 # PermissionHandler.route_to('/permissions')
 logging.basicConfig(level=logging.DEBUG)
-application = RestletApplication([None, None
 
-                                  ],
+from base.views import UserHandler, GroupHandler, PermissionHandler
+application = RestletApplication([UserHandler.route_to('/users'),
+                                  GroupHandler.route_to('/groups'),
+                                  PermissionHandler.route_to('/permissions')],
                                  dburi='postgresql://postgres:postgres@localhost/test',  # 'sqlite:///:memory:',
-                                 loglevel='DEBUG', debug=True, dblogging=True)
+                                 loglevel=LOG_LEVEL,
+                                 debug=DEBUGGING,
+                                 dblogging=DEBUGGING)
 
 
 if __name__ == "__main__":
